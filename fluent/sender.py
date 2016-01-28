@@ -7,6 +7,9 @@ import time
 
 import msgpack
 
+SEND_FAIL_SEC = 3
+MAX_SEND_FAIL = 30
+
 
 _global_sender = None
 
@@ -41,6 +44,8 @@ class FluentSender(object):
 
         self.socket = None
         self.pendings = None
+        self.last_send_fail = None
+        self.send_fail_cnt = 0
         self.lock = threading.Lock()
 
         try:
@@ -89,16 +94,25 @@ class FluentSender(object):
 
             # send finished
             self.pendings = None
+            self.last_send_fail = None
+            self.send_fail_cnt = 0
         except Exception:
             # close socket
             self._close()
+            self.send_fail_cnt += 1
             # clear buffer if it exceeds max bufer size
-            if self.pendings and (len(self.pendings) > self.bufmax):
+            if self.send_fail_cnt > MAX_SEND_FAIL:
+                raise
+            if self.last_send_fail and time.time() - self.last_send_fail > SEND_FAIL_SEC:
+                raise
+            elif self.pendings and (len(self.pendings) > self.bufmax):
                 # TODO: add callback handler here
                 self.pendings = None
                 raise
             else:
                 self.pendings = bytes_
+                if self.last_send_fail is None:
+                    self.last_send_fail = time.time()
 
     def _reconnect(self):
         if not self.socket:
