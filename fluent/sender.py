@@ -96,6 +96,7 @@ class FluentSender(object):
             if self.pendings and (len(self.pendings) > self.bufmax):
                 # TODO: add callback handler here
                 self.pendings = None
+                raise
             else:
                 self.pendings = bytes_
 
