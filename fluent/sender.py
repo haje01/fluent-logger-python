@@ -7,7 +7,7 @@ import time
 
 import msgpack
 
-SEND_FAIL_SEC = 3
+SEND_FAIL_SEC = 6
 MAX_SEND_FAIL = 30
 
 
