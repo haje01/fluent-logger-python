@@ -17,9 +17,10 @@ _global_sender = None
 def setup(tag, **kwargs):
     host = kwargs.get('host', 'localhost')
     port = kwargs.get('port', 24224)
+    max_send_fail = kwargs.get('max_send_fail', MAX_SEND_FAIL)
 
     global _global_sender
-    _global_sender = FluentSender(tag, host=host, port=port)
+    _global_sender = FluentSender(tag, host=host, port=port, max_send_fail=max_send_fail)
 
 
 def get_global_sender():
@@ -33,7 +34,8 @@ class FluentSender(object):
                  port=24224,
                  bufmax=1 * 1024 * 1024,
                  timeout=3.0,
-                 verbose=False):
+                 verbose=False,
+                 max_send_fail=MAX_SEND_FAIL):
 
         self.tag = tag
         self.host = host
@@ -41,6 +43,7 @@ class FluentSender(object):
         self.bufmax = bufmax
         self.timeout = timeout
         self.verbose = verbose
+        self.max_send_fail = max_send_fail
 
         self.socket = None
         self.pendings = None
@@ -101,7 +104,8 @@ class FluentSender(object):
             self._close()
             self.send_fail_cnt += 1
             # clear buffer if it exceeds max bufer size
-            if self.send_fail_cnt > MAX_SEND_FAIL:
+            import pdb; pdb.set_trace()  # XXX BREAKPOINT
+            if self.send_fail_cnt > self.max_send_fail:
                 raise
             if self.last_send_fail and time.time() - self.last_send_fail > SEND_FAIL_SEC:
                 raise
