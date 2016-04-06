@@ -4,6 +4,7 @@ from __future__ import print_function
 import socket
 import threading
 import time
+import logging
 
 import msgpack
 
@@ -20,7 +21,8 @@ def setup(tag, **kwargs):
     max_send_fail = kwargs.get('max_send_fail', MAX_SEND_FAIL)
 
     global _global_sender
-    _global_sender = FluentSender(tag, host=host, port=port, max_send_fail=max_send_fail)
+    _global_sender = FluentSender(tag, host=host, port=port,
+                                  max_send_fail=max_send_fail)
 
 
 def get_global_sender():
@@ -83,6 +85,7 @@ class FluentSender(object):
             self.lock.release()
 
     def _send_internal(self, bytes_):
+        # logging.debug("_send_internal")
         # buffering
         if self.pendings:
             self.pendings += bytes_
@@ -99,15 +102,21 @@ class FluentSender(object):
             self.pendings = None
             self.last_send_fail = None
             self.send_fail_cnt = 0
-        except Exception:
+        except Exception, e:
+            logging.error("FluentSender::_send_internal - Exception"
+                          " '{}'".format(e))
             # close socket
             self._close()
             self.send_fail_cnt += 1
+            logging.debug("FluentSender::_send_internal - send_fail_cnt {},"
+                          " max_send_fail {}".format(self.send_fail_cnt,
+                                                     self.max_send_fail))
             # clear buffer if it exceeds max bufer size
-            import pdb; pdb.set_trace()  # XXX BREAKPOINT
             if self.send_fail_cnt > self.max_send_fail:
+                logging.error("raising")
                 raise
-            if self.last_send_fail and time.time() - self.last_send_fail > SEND_FAIL_SEC:
+            if self.last_send_fail and time.time() - self.last_send_fail >\
+                    SEND_FAIL_SEC:
                 raise
             elif self.pendings and (len(self.pendings) > self.bufmax):
                 # TODO: add callback handler here
