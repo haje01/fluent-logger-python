@@ -9,7 +9,7 @@ import logging
 import msgpack
 
 SEND_FAIL_SEC = 6
-MAX_SEND_FAIL = 30
+MAX_SEND_FAIL = 10
 
 
 _global_sender = None
@@ -114,16 +114,22 @@ class FluentSender(object):
             # clear buffer if it exceeds max bufer size
             if self.send_fail_cnt > self.max_send_fail:
                 logging.error("raising")
+                self.send_fail_cnt = 0
                 raise
             if self.last_send_fail and time.time() - self.last_send_fail >\
                     SEND_FAIL_SEC:
+                logging.error("send fail too long")
+                self.last_send_fail = None
                 raise
             elif self.pendings and (len(self.pendings) > self.bufmax):
                 # TODO: add callback handler here
+                logging.error("fail pending {} > bufmax "
+                              "{}".format(len(self.pendings), self.bufmax))
                 self.pendings = None
                 raise
             else:
                 self.pendings = bytes_
+                logging.warning("pending {} bytes".format(len(bytes_)))
                 if self.last_send_fail is None:
                     self.last_send_fail = time.time()
 
